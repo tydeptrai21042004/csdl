@@ -16,7 +16,7 @@ export function apiError(error: unknown) {
   }
   if (e?.code === 'SELF_SIGNED_CERT_IN_CHAIN' || e?.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || e?.message?.includes('Supabase TLS CA missing') || e?.message?.includes('Supabase CA certificate is not valid PEM')) {
     console.error('PostgreSQL TLS configuration:', e.code || 'CA_MISSING');
-    return reply({ error: 'PostgreSQL TLS certificate could not be verified. Configure SUPABASE_DB_CA_CERT in Vercel from the Supabase database SSL settings, then redeploy.' }, 503);
+    return reply({ error: 'PostgreSQL TLS certificate verification failed. For this disposable demo, set PG_DEMO_INSECURE_SSL=true in Vercel and redeploy the corrected code; for verified TLS, provide SUPABASE_DB_CA_CERT.' }, 503);
   }
   if (e?.code === '23505') return reply({ error: 'Duplicate or already reserved record. Choose another seat, bus, or identifier.' }, 409);
   if (e?.code === '23P01') return reply({ error: 'Scheduling conflict: the bus is already assigned during these hours.' }, 409);

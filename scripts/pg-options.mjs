@@ -11,6 +11,11 @@ export function pgOptions(rawUrl) {
   for (const key of ['sslmode','sslcert','sslkey','sslrootcert','uselibpqcompat']) url.searchParams.delete(key);
   const connectionString = url.toString();
   if (!supabase && (!mode || mode === 'disable')) return { connectionString };
+  // Demo-only opt-in: TLS encryption without certificate authentication.
+  // Does not disable TLS for unrelated Node.js requests.
+  if (process.env.PG_DEMO_INSECURE_SSL === 'true') {
+    return { connectionString, ssl: { rejectUnauthorized: false } };
+  }
   const ca = (process.env.SUPABASE_DB_CA_CERT || '').replace(/\\n/g, '\n').trim() ||
     (process.env.SUPABASE_DB_CA_CERT_BASE64
       ? Buffer.from(process.env.SUPABASE_DB_CA_CERT_BASE64, 'base64').toString('utf8').trim() : '');

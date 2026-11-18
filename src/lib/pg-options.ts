@@ -24,6 +24,14 @@ export function pgOptions(rawUrl: string): ClientConfig {
   const tlsRequested = supabase || Boolean(mode && mode !== 'disable');
   if (!tlsRequested) return { connectionString };
 
+  // Explicit opt-in for a disposable demo: the PostgreSQL connection remains
+  // TLS-encrypted but does NOT authenticate the server certificate. Never
+  // use this switch for real bookings or production data. This only affects
+  // pg clients created with pgOptions(), not global Node.js TLS settings.
+  if (process.env.PG_DEMO_INSECURE_SSL === 'true') {
+    return { connectionString, ssl: { rejectUnauthorized: false } };
+  }
+
   const ca = (process.env.SUPABASE_DB_CA_CERT || '').replace(/\\n/g, '\n').trim() ||
     (process.env.SUPABASE_DB_CA_CERT_BASE64
       ? Buffer.from(process.env.SUPABASE_DB_CA_CERT_BASE64, 'base64').toString('utf8').trim()
