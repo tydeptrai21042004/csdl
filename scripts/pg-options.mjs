@@ -1,26 +1,17 @@
-/** Same strict TLS policy as src/lib/pg-options.ts, for standalone CLI scripts. */
+/** Neon PostgreSQL TLS settings shared by CLI scripts. */
 export function pgOptions(rawUrl) {
   let url;
   try { url = new URL(rawUrl); }
-  catch { throw new Error('Invalid PostgreSQL URL. Copy it from Supabase -> Connect.'); }
-  if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('A postgresql:// connection URL is required.');
-  const hostname = url.hostname;
-  const supabase = hostname.endsWith('.supabase.com');
+  catch { throw new Error('Invalid database URL. Copy it from Neon Console -> Connect.'); }
+  if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('A postgresql:// URL is required.');
+  const hostname = url.hostname.toLowerCase();
+  if (hostname.endsWith('.supabase.com')) throw new Error('Supabase URL detected; use Neon connection strings.');
+  const isNeon = hostname.endsWith('.neon.tech');
+  const isLocal = ['localhost','127.0.0.1','::1'].includes(hostname);
   const mode = url.searchParams.get('sslmode')?.toLowerCase();
-  if (supabase && mode === 'disable') throw new Error('TLS cannot be disabled for Supabase PostgreSQL.');
-  for (const key of ['sslmode','sslcert','sslkey','sslrootcert','uselibpqcompat']) url.searchParams.delete(key);
+  if (!isLocal && mode === 'disable') throw new Error('Remote PostgreSQL connections must use TLS.');
+  const tls = isNeon || (!isLocal && mode !== 'disable') || Boolean(mode && mode !== 'disable');
+  for (const key of ['sslmode','sslcert','sslkey','sslrootcert','uselibpqcompat','channel_binding']) url.searchParams.delete(key);
   const connectionString = url.toString();
-  if (!supabase && (!mode || mode === 'disable')) return { connectionString };
-  // Demo-only opt-in: TLS encryption without certificate authentication.
-  // Does not disable TLS for unrelated Node.js requests.
-  if (process.env.PG_DEMO_INSECURE_SSL === 'true') {
-    return { connectionString, ssl: { rejectUnauthorized: false } };
-  }
-  const ca = (process.env.SUPABASE_DB_CA_CERT || '').replace(/\\n/g, '\n').trim() ||
-    (process.env.SUPABASE_DB_CA_CERT_BASE64
-      ? Buffer.from(process.env.SUPABASE_DB_CA_CERT_BASE64, 'base64').toString('utf8').trim() : '');
-  if (supabase && !ca) throw new Error('Supabase TLS CA missing: set SUPABASE_DB_CA_CERT (PEM) or SUPABASE_DB_CA_CERT_BASE64. Download it from Supabase -> Database Settings -> SSL Configuration.');
-  if (ca && (!ca.includes('-----BEGIN CERTIFICATE-----') || !ca.includes('-----END CERTIFICATE-----')))
-    throw new Error('Supabase CA certificate is not valid PEM.');
-  return { connectionString, ssl: { rejectUnauthorized: true, servername: hostname, ...(ca ? { ca } : {}) } };
+  return tls ? {connectionString,ssl:{rejectUnauthorized:true,servername:hostname},enableChannelBinding:isNeon} : {connectionString};
 }

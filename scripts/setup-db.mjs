@@ -7,13 +7,15 @@ import pg from 'pg';
 import { pgOptions } from './pg-options.mjs';
 dotenv.config({path:'.env.local'}); dotenv.config();
 const connectionString=setupConnectionUrl();
-if(!connectionString) {console.error('Set POSTGRES_URL in .env.local first.');process.exit(1);}
+if(!connectionString) {console.error('Set DATABASE_URL_UNPOOLED in .env.local first.');process.exit(1);}
 const client=new pg.Client(pgOptions(connectionString));
-const files=['01_schema.sql','02_logic.sql','03_seed.sql','06_supabase_security.sql'];
+const files=['01_schema.sql','02_logic.sql','03_seed.sql','06_neon_security.sql'];
 try {
  await client.connect();
  const exists=await client.query("SELECT to_regclass('public.user_account') AS present");
- if(exists.rows[0].present) {throw new Error('Database already contains user_account. For safety, use a fresh Supabase project or a separate empty schema rather than overwriting records.');}
+ if(exists.rows[0].present) throw new Error('Database already contains user_account. Refusing to overwrite existing data.');
+ const existing=await client.query("SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' LIMIT 1");
+ if(existing.rowCount)throw new Error('Public schema contains existing tables. Initialize a fresh empty Neon database instead.');
  await client.query('BEGIN');
  try {
   for(const file of files) {

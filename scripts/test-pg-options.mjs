@@ -1,41 +1,30 @@
 import assert from 'node:assert/strict';
 import { pgOptions } from './pg-options.mjs';
-
-const url = 'postgresql://postgres.project:PLACEHOLDER@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=verify-full&uselibpqcompat=true';
-const names=['PG_DEMO_INSECURE_SSL','SUPABASE_DB_CA_CERT','SUPABASE_DB_CA_CERT_BASE64'];
-const originals=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+import {runtimeConnectionUrl,setupConnectionUrl} from './db-env.mjs';
+const pooled='postgresql://neondb_owner:sample@ep-example-1234-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const direct=pooled.replace('-pooler.','.');
+const options=pgOptions(pooled);
+assert.equal(options.ssl.rejectUnauthorized,true);
+assert.equal(options.ssl.servername,'ep-example-1234-pooler.us-east-2.aws.neon.tech');
+assert.equal(options.enableChannelBinding,true);
+assert.ok(!options.connectionString.includes('sslmode'));
+assert.ok(!options.connectionString.includes('channel_binding'));
+assert.equal(pgOptions(direct).ssl.rejectUnauthorized,true);
+assert.equal(pgOptions('postgresql://postgres:pwd@localhost:5432/test').ssl,undefined);
+assert.throws(()=>pgOptions(pooled.replace('sslmode=require','sslmode=disable')),/must use TLS/);
+assert.throws(()=>pgOptions('postgresql://postgres:pwd@db.demo.supabase.com:5432/postgres'),/Supabase URL/);
+const savedPool=process.env.DATABASE_URL,savedDirect=process.env.DATABASE_URL_UNPOOLED;
 try {
-  for (const name of names) delete process.env[name];
-  assert.throws(() => pgOptions(url), /Supabase TLS CA missing/);
-  assert.throws(() => pgOptions(url.replace('verify-full','disable')), /TLS cannot be disabled/);
-  assert.equal(pgOptions('postgresql://postgres:pw@localhost:5432/test').ssl, undefined);
-
-  // Demo opt-in: no CA required; sensitive URL bits are retained, conflicting
-  // connection-string SSL parameters removed, and TLS not disabled.
-  process.env.PG_DEMO_INSECURE_SSL='true';
-  for (const testUrl of [url,url.replace(':6543/',':5432/')]) {
-    const opts=pgOptions(testUrl);
-    assert.deepEqual(opts.ssl,{rejectUnauthorized:false});
-    assert.ok(!opts.connectionString.includes('sslmode='));
-    assert.ok(!opts.connectionString.includes('uselibpqcompat='));
-    assert.ok(opts.connectionString.includes('postgres.project'));
-  }
-  assert.throws(() => pgOptions(url.replace('verify-full','disable')), /TLS cannot be disabled/);
-  delete process.env.PG_DEMO_INSECURE_SSL;
-
-  process.env.SUPABASE_DB_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST-CERTIFICATE-CONTENT\n-----END CERTIFICATE-----';
-  const secure=pgOptions(url);
-  assert.equal(secure.ssl.rejectUnauthorized,true);
-  assert.equal(secure.ssl.servername,'aws-0-us-east-1.pooler.supabase.com');
-  assert.match(secure.ssl.ca,/\nTEST-CERTIFICATE-CONTENT\n/);
-  assert.ok(!secure.connectionString.includes('sslmode='));
-  delete process.env.SUPABASE_DB_CA_CERT;
-  process.env.SUPABASE_DB_CA_CERT_BASE64 = Buffer.from('-----BEGIN CERTIFICATE-----\nBASE64\n-----END CERTIFICATE-----').toString('base64');
-  assert.match(pgOptions(url).ssl.ca,/BASE64/);
-  console.log('PASS: demo TLS for both poolers, no CA required in demo, secure TLS, URL normalization, disabled-TLS guard.');
+  process.env.DATABASE_URL=pooled;
+  process.env.DATABASE_URL_UNPOOLED=direct;
+  assert.equal(runtimeConnectionUrl(),pooled);
+  assert.equal(setupConnectionUrl(),direct);
+  process.env.DATABASE_URL_UNPOOLED=pooled;
+  assert.throws(()=>setupConnectionUrl(),/unpooled/);
+  process.env.DATABASE_URL_UNPOOLED=direct.replace('ep-example-1234.', 'ep-other-1234.');
+  assert.throws(()=>setupConnectionUrl(),/SAME/);
 } finally {
-  for (const name of names) {
-    if (originals[name] === undefined) delete process.env[name];
-    else process.env[name] = originals[name];
-  }
+  if(savedPool===undefined)delete process.env.DATABASE_URL;else process.env.DATABASE_URL=savedPool;
+  if(savedDirect===undefined)delete process.env.DATABASE_URL_UNPOOLED;else process.env.DATABASE_URL_UNPOOLED=savedDirect;
 }
+console.log('PASS: Neon pooled/direct URLs, verified TLS, channel binding, localhost, Supabase guard, and URL sanitization.');

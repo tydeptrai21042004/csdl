@@ -8,7 +8,7 @@ Push the repository to GitHub. Verify the **Build and real PostgreSQL end-to-end
 
 ## B. Deployed staging application
 
-Set `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, `ADMIN_PASSWORD`, `SESSION_SECRET`, and `SETUP_TOKEN` on Vercel. Deploy and initialize a fresh Supabase project at `/setup`.
+Set `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `ADMIN_PASSWORD`, `SESSION_SECRET`, and `SETUP_TOKEN` on Vercel. Deploy and initialize a fresh Neon project at `/setup`.
 
 - Open `/api/health` and verify `status: connected`.
 - Visit `/` and verify the departure list is populated from the seeded `Trip` records.
@@ -26,8 +26,8 @@ A test booking is stored persistently in PostgreSQL, but bank/card processing is
 
 ## D. Failure diagnostics
 
-- `GET /api/health` returns HTTP 500: check the Vercel server logs and Supabase connection variables.
-- `/setup` fails: make sure the Supabase project is empty and the direct connection string is configured.
+- `GET /api/health` returns HTTP 500: check the Vercel server logs and Neon connection variables.
+- `/setup` fails: make sure the Neon project is empty and the direct connection string is configured.
 - Build fails: open GitHub Actions' "Build production Next.js" step and fix the compiler error before deploying.
 - Seed fails: inspect the DB setup failure log; no tables should be partially committed because setup wraps files in a transaction.
 - A guided `/lab` test fails: record its test ID, PostgreSQL error code, and error message. Do not call this a pass unless the expected constraint behavior was demonstrated.

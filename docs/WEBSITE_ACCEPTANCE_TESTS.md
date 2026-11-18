@@ -1,6 +1,6 @@
-# Real website acceptance tests (Supabase + Vercel)
+# Real website acceptance tests (Neon + Vercel)
 
-These checks prove the public website reads/writes the same 23-table Assignment 1 PostgreSQL database used by the admin SQL laboratory. Perform them **after initializing a fresh Supabase database**. No real tickets are issued and all payments are simulated.
+These checks prove the public website reads/writes the same 23-table Assignment 1 PostgreSQL database used by the admin SQL laboratory. Perform them **after initializing a fresh Neon database**. No real tickets are issued and all payments are simulated.
 
 ## Passenger journey
 
@@ -31,7 +31,7 @@ ORDER BY b.booking_id DESC, tk.ticket_id DESC
 LIMIT 20;
 ```
 
-6. Run `npm run db:test` with the same Supabase database from a computer with Node.js and npm. It should verify sample counts and SQL business logic.
+6. Run `npm run db:test` with the same Neon database from a computer with Node.js and npm. It should verify sample counts and SQL business logic.
 
 ## Verify no static mock
 
@@ -42,6 +42,6 @@ LIMIT 20;
 
 ## Known limits
 
-- A local package install, real PostgreSQL transaction execution and a production Vercel build have to run in an environment with npm network access and Supabase credentials.
+- A local package install, real PostgreSQL transaction execution and a production Vercel build have to run in an environment with npm network access and Neon credentials.
 - The sandbox does not perform bank transactions, verify email addresses or issue actual transportation tickets.
 - For classroom demonstration, use synthetic passenger names/email addresses and the prepared demo sample data.

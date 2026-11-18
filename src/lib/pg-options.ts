@@ -2,46 +2,30 @@ import 'server-only';
 import type { ClientConfig } from 'pg';
 
 /**
- * Verified TLS configuration for all server-side PostgreSQL connections.
- * Supabase's pooler may use a private CA, so include that CA explicitly.
- * node-postgres replaces `ssl` when the URL contains sslmode/sslrootcert;
- * remove those options and provide TLS settings in one place.
+ * Neon PostgreSQL uses a publicly trusted TLS certificate. Use Node's normal
+ * trust store and enforce hostname verification; no Supabase CA is needed.
+ * Explicit SSL options take precedence over URL parameters in node-postgres,
+ * so remove conflicting URL flags before handing the URL to `pg`.
  */
 export function pgOptions(rawUrl: string): ClientConfig {
   let url: URL;
   try { url = new URL(rawUrl); }
-  catch { throw new Error('Invalid PostgreSQL URL. Copy it from Supabase -> Connect.'); }
-  if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('A postgresql:// connection URL is required.');
-
-  const hostname = url.hostname;
-  const supabase = hostname.endsWith('.supabase.com');
-  const mode = url.searchParams.get('sslmode')?.toLowerCase();
-  if (supabase && mode === 'disable') throw new Error('TLS cannot be disabled for Supabase PostgreSQL.');
-
-  // pg-connection-string otherwise overrides a separately supplied `ssl` object.
-  for (const key of ['sslmode','sslcert','sslkey','sslrootcert','uselibpqcompat']) url.searchParams.delete(key);
+  catch { throw new Error('Invalid database URL. Copy the connection string from Neon Console -> Connect.'); }
+  if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('DATABASE_URL must start with postgresql://.');
+  const hostname = url.hostname.toLowerCase();
+  if (hostname.endsWith('.supabase.com')) throw new Error('Supabase URL detected. Use your Neon project connection string instead.');
+  const isNeon = hostname.endsWith('.neon.tech');
+  const isLocal = ['localhost', '127.0.0.1', '::1'].includes(hostname);
+  const sslmode = url.searchParams.get('sslmode')?.toLowerCase();
+  if (!isLocal && sslmode === 'disable') throw new Error('Remote PostgreSQL connections must use TLS.');
+  const tls = isNeon || (!isLocal && sslmode !== 'disable') || Boolean(sslmode && sslmode !== 'disable');
+  for (const key of ['sslmode','sslcert','sslkey','sslrootcert','uselibpqcompat','channel_binding']) url.searchParams.delete(key);
   const connectionString = url.toString();
-  const tlsRequested = supabase || Boolean(mode && mode !== 'disable');
-  if (!tlsRequested) return { connectionString };
-
-  // Explicit opt-in for a disposable demo: the PostgreSQL connection remains
-  // TLS-encrypted but does NOT authenticate the server certificate. Never
-  // use this switch for real bookings or production data. This only affects
-  // pg clients created with pgOptions(), not global Node.js TLS settings.
-  if (process.env.PG_DEMO_INSECURE_SSL === 'true') {
-    return { connectionString, ssl: { rejectUnauthorized: false } };
-  }
-
-  const ca = (process.env.SUPABASE_DB_CA_CERT || '').replace(/\\n/g, '\n').trim() ||
-    (process.env.SUPABASE_DB_CA_CERT_BASE64
-      ? Buffer.from(process.env.SUPABASE_DB_CA_CERT_BASE64, 'base64').toString('utf8').trim()
-      : '');
-  if (supabase && !ca) {
-    throw new Error('Supabase TLS CA missing: set SUPABASE_DB_CA_CERT (PEM) or SUPABASE_DB_CA_CERT_BASE64 in Vercel. Download the certificate in Supabase -> Database Settings -> SSL Configuration.');
-  }
-  if (ca && (!ca.includes('-----BEGIN CERTIFICATE-----') || !ca.includes('-----END CERTIFICATE-----'))) {
-    throw new Error('Supabase CA certificate is not valid PEM. Check SUPABASE_DB_CA_CERT.');
-  }
-  // Never silently turn off hostname or certificate verification.
-  return { connectionString, ssl: { rejectUnauthorized: true, servername: hostname, ...(ca ? { ca } : {}) } };
+  if (!tls) return { connectionString };
+  return {
+    connectionString,
+    ssl: { rejectUnauthorized: true, servername: hostname },
+    // node-postgres >=8.14 supports TLS SCRAM channel binding via this option.
+    enableChannelBinding: isNeon,
+  } as ClientConfig;
 }

@@ -4,7 +4,7 @@ import pg from 'pg';
 import { pgOptions } from './pg-options.mjs';
 dotenv.config({path:'.env.local'});dotenv.config();
 const connectionString=setupConnectionUrl();
-if(!connectionString) {console.error('POSTGRES_URL is missing.');process.exit(1);}
+if(!connectionString) {console.error('DATABASE_URL_UNPOOLED is missing.');process.exit(1);}
 const client=new pg.Client(pgOptions(connectionString));
 function ensure(ok,message){if(!ok)throw new Error(message);console.log('  PASS:',message);}
 try{

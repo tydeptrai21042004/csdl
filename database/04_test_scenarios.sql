@@ -1,5 +1,5 @@
 -- Non-destructive SQL demonstration. Run after seeding.
--- Run these in the Supabase SQL editor (one statement at a time for review).
+-- Run these in the Neon SQL editor (one statement at a time for review).
 
 -- 23 relations all populated with >=5 rows.
 SELECT 'user_account' AS table_name,count(*) FROM user_account

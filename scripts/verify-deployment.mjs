@@ -1,4 +1,4 @@
-/** Safe read-only verification of a deployed Vercel website with seeded Supabase data. */
+/** Safe read-only verification of a deployed Vercel website with seeded Neon data. */
 import assert from 'node:assert/strict';
 const base = process.env.DEPLOY_URL || process.argv[2];
 if (!base || !/^https?:\/\//.test(base)) {

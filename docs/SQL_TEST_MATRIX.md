@@ -32,4 +32,4 @@ The `/lab` page contains server-owned tests from `src/lib/lab-cases.ts`. These a
 6. Run the two query procedures and two cursor functions and show `/reports`.
 7. Click **Run full suite**, inspect PASS/FAIL messages, and export screenshots only after real tests have passed.
 
-**Caveat:** The test suite is self-contained per test but relies on the original seeded IDs and data state. If you materially edit the data (for example, sell all the demo seats on trip 6), use an isolated fresh Supabase project for the assessed presentation.
+**Caveat:** The test suite is self-contained per test but relies on the original seeded IDs and data state. If you materially edit the data (for example, sell all the demo seats on trip 6), use an isolated fresh Neon project for the assessed presentation.

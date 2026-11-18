@@ -45,15 +45,15 @@ function withoutTransactionWrapper(sql: string) {
 
 export async function bootstrapDatabase() {
   const url=setupDatabaseUrl();
-  const pool=new Pool({...pgOptions(url),max:1,connectionTimeoutMillis:12000});
+  const pool=new Pool({...pgOptions(url),max:1,connectionTimeoutMillis:18000});
   const client=await pool.connect();
   try {
     await client.query('BEGIN');
     try {
-      await client.query('SET LOCAL statement_timeout = 25000');
+      await client.query('SET LOCAL statement_timeout = 45000');
       await client.query('SELECT pg_advisory_xact_lock(927160, 2026)');
       const exists=await client.query("SELECT to_regclass('public.user_account') AS found");
-      if(exists.rows[0].found) throw new Error('Database is already initialized. Existing data was not modified. Use a fresh Supabase project (or an empty dedicated public schema) for a fresh seed.');
+      if(exists.rows[0].found) throw new Error('Database is already initialized. Existing data was not modified. Use a fresh Neon database/branch (or an empty dedicated public schema) for a fresh seed.');
       const existing=await client.query(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' LIMIT 1`);
       if(existing.rowCount) throw new Error('The public schema contains unrelated tables. Setup only runs on an empty database.');
       for(const file of sqlBundle.filter(f=>f.filename!=='05_upgrade_from_v2.sql')) await client.query(withoutTransactionWrapper(file.sql));
@@ -66,7 +66,7 @@ export async function bootstrapDatabase() {
 /** Non-destructive upgrade for an existing v2 PostgreSQL database, authorized by /setup. */
 export async function upgradeDatabase() {
   const url=setupDatabaseUrl();
-  const pool=new Pool({...pgOptions(url),max:1,connectionTimeoutMillis:12000});
+  const pool=new Pool({...pgOptions(url),max:1,connectionTimeoutMillis:18000});
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
@@ -78,7 +78,7 @@ export async function upgradeDatabase() {
       const migration=sqlBundle.find(f=>f.filename==='05_upgrade_from_v2.sql');
       if(!migration)throw new Error('Upgrade script is missing from the deployment bundle.');
       await client.query(withoutTransactionWrapper(migration.sql));
-      const security=sqlBundle.find(f=>f.filename==='06_supabase_security.sql');
+      const security=sqlBundle.find(f=>f.filename==='06_neon_security.sql');
       if(security) await client.query(withoutTransactionWrapper(security.sql));
       await client.query('COMMIT');
       return {ok:true,message:'Existing 23-table database upgraded without deleting historical records. Passenger routines and seat inventory are installed.'};
