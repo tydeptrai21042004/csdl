@@ -4,10 +4,11 @@ import dotenv from 'dotenv';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { pgOptions } from './pg-options.mjs';
 dotenv.config({path:'.env.local'}); dotenv.config();
 const connectionString=setupConnectionUrl();
 if(!connectionString) {console.error('Set POSTGRES_URL in .env.local first.');process.exit(1);}
-const client=new pg.Client({connectionString});
+const client=new pg.Client(pgOptions(connectionString));
 const files=['01_schema.sql','02_logic.sql','03_seed.sql','06_supabase_security.sql'];
 try {
  await client.connect();

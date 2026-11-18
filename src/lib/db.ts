@@ -1,6 +1,7 @@
 import 'server-only';
 import { Pool } from 'pg';
 import { databaseUrl } from '@/lib/db-config';
+import { pgOptions } from '@/lib/pg-options';
 
 declare global {
   // Reuse the pool in local development / warm serverless instances.
@@ -11,7 +12,7 @@ declare global {
 export function getPool(): Pool {
   if (!global.__intercityPgPool) {
     global.__intercityPgPool = new Pool({
-      connectionString: databaseUrl(),
+      ...pgOptions(databaseUrl()),
       max: 3,
       connectionTimeoutMillis: 10000,
       idleTimeoutMillis: 15000,

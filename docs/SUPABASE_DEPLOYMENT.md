@@ -8,7 +8,7 @@ Regenerate the Supabase database password. Revoke/rotate exposed Supabase secret
 
 ## Step 1: Connection strings
 
-Supabase Dashboard > Connect provides two different pooler modes. Copy the **entire URI** from the dashboard, including the username with the project suffix and `sslmode=require`.
+Supabase Dashboard > Connect provides two different pooler modes. Copy the two URIs from the dashboard, including the username with the project suffix; use `sslmode=verify-full` and configure `SUPABASE_DB_CA_CERT` from **Database Settings → SSL Configuration**. The `pg` adapter handles this mode with an explicit verified SSL object.
 
 | Vercel variable | Supabase Connect setting | Port | Used by |
 | --- | --- | ---: | --- |
@@ -35,11 +35,12 @@ Do **not** put any of these in variables starting with `NEXT_PUBLIC_`.
 
 ## Step 3: Vercel variables
 
-Mandatory, server-side:
+Mandatory, server-side (including the database CA certificate):
 
 ```dotenv
-POSTGRES_URL="postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?sslmode=require"
-POSTGRES_URL_NON_POOLING="postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=require"
+POSTGRES_URL="postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?sslmode=verify-full"
+POSTGRES_URL_NON_POOLING="postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=verify-full"
+SUPABASE_DB_CA_CERT="PASTE_FULL_SUPABASE_CA_PEM_FROM_DATABASE_SSL_SETTINGS"
 ADMIN_PASSWORD="YOUR_LONG_UNIQUE_PASSWORD"
 SESSION_SECRET="64_RANDOM_HEX_CHARACTERS"
 SETUP_TOKEN="A_DIFFERENT_64_RANDOM_HEX_CHARACTERS"

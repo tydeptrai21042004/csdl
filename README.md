@@ -29,13 +29,14 @@ For an exact environment variable mapping and troubleshooting checklist, see [`d
 ## Deploy on Vercel + Supabase (no local SQL required)
 
 1. Create a **dedicated, empty Supabase project** at https://supabase.com/dashboard. Use a new project rather than overwriting an existing database. **Rotate the credentials shared in chat first.**
-2. Supabase → **Connect** → **Transaction pooler**: copy the `postgresql://...:6543/postgres?sslmode=require` connection URI to the Vercel environment variable `POSTGRES_URL`. For `POSTGRES_URL_NON_POOLING`, use **Session pooler**, port `5432`. Use the exact Supabase-provided URI, not `db.<project>.supabase.co` if your machine lacks IPv6 connectivity.
+2. Supabase → **Connect** → **Transaction pooler**: copy the `postgresql://...:6543/postgres?sslmode=verify-full` connection URI to the Vercel environment variable `POSTGRES_URL`. For `POSTGRES_URL_NON_POOLING`, use **Session pooler**, port `5432`. Use the exact Supabase-provided URI, not `db.<project>.supabase.co` if your machine lacks IPv6 connectivity.
 3. Push this repository to GitHub with `package.json` at the root. Import it via https://vercel.com/new with framework **Next.js**. Do not set an output folder.
 4. Vercel → Project Settings → Environment Variables: set these **five required server-side** variables (use newly rotated credentials):
 
    ```env
-   POSTGRES_URL=postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?sslmode=require
-   POSTGRES_URL_NON_POOLING=postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=require
+   POSTGRES_URL=postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?sslmode=verify-full
+   POSTGRES_URL_NON_POOLING=postgresql://postgres.PROJECT_REF:NEW_PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=verify-full
+   SUPABASE_DB_CA_CERT="PASTE_FULL_SUPABASE_CA_PEM_FROM_DATABASE_SSL_SETTINGS"
    ADMIN_PASSWORD=YOUR_UNIQUE_LONG_ADMIN_PASSWORD
    SESSION_SECRET=YOUR_RANDOM_64_CHAR_HEX_SECRET
    SETUP_TOKEN=YOUR_DIFFERENT_RANDOM_64_CHAR_HEX_SECRET
@@ -150,3 +151,8 @@ DEPLOY_URL=https://your-project.vercel.app npm run verify:deploy
 ```
 
 This safe read-only probe requires no login and validates the rendered public homepage, actual PostgreSQL connection, seeded operator/station catalog, scheduled trips and physical seat inventory. It reports a failure if a page/API returns an error or returns empty/incorrect database-backed data. It is **not a replacement for the GitHub Actions write-flow integration tests**.
+
+
+## Supabase TLS + 42P01 troubleshooting (V5 patch)
+
+See [`docs/TLS_AND_SCHEMA_FIX.md`](docs/TLS_AND_SCHEMA_FIX.md) for CA-verified `pg` TLS, schema setup, and testing.

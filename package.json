@@ -19,7 +19,8 @@
     "check:project": "npm run check:sql && npm run check:web",
     "smoke:web": "node scripts/smoke-web.mjs",
     "verify:local": "npm run check:project && npm run build && npm run db:test && npm run smoke:web",
-    "verify:deploy": "node scripts/verify-deployment.mjs"
+    "verify:deploy": "node scripts/verify-deployment.mjs",
+    "test:tls-config": "node scripts/test-pg-options.mjs"
   },
   "dependencies": {
     "next": "^16.0.0",

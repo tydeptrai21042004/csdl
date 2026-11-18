@@ -3,18 +3,29 @@ import { Pool } from 'pg';
 import { sqlBundle } from '@/generated/db-bundle';
 import { getPool } from '@/lib/db';
 import { setupDatabaseUrl } from '@/lib/db-config';
+import { pgOptions } from '@/lib/pg-options';
+
+export const EXPECTED_TABLES = [
+  'user_account','passenger_profile','platform_admin','bus_operator','operator_staff',
+  'operator_phone','driver','bus','seat','station','route','route_stop',
+  'trip','trip_seat','trip_driver_assignment','promotion','booking','ticket',
+  'payment_method','payment','refund','invoice','review'
+] as const;
 
 export async function databaseStatus() {
-  const {rows}=await getPool().query<{initialized:boolean;table_count:number}>(
-    `SELECT (to_regclass('public.user_account') IS NOT NULL) AS initialized,
-       count(*)::int AS table_count
-     FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'`);
-  const result={...rows[0],trip_count:null as number|null};
-  if(result.initialized){
-    const data=await getPool().query<{total:number}>('SELECT count(*)::int AS total FROM trip');
-    result.trip_count=data.rows[0].total;
+  const { rows } = await getPool().query<{ table_name: string }>(
+    `SELECT table_name FROM information_schema.tables
+     WHERE table_schema='public' AND table_type='BASE TABLE'`);
+  const names = new Set(rows.map(row => row.table_name));
+  const missing = EXPECTED_TABLES.filter(name => !names.has(name));
+  const initialized = missing.length === 0;
+  const state = rows.length === 0 ? 'empty' : initialized ? 'ready' : 'partial';
+  let trip_count: number | null = null;
+  if (names.has('trip')) {
+    const count = await getPool().query<{ total: number }>('SELECT count(*)::int AS total FROM public.trip');
+    trip_count = count.rows[0].total;
   }
-  return result;
+  return { initialized, state, table_count: rows.length, trip_count, missing_tables: missing };
 }
 
 function withoutTransactionWrapper(sql: string) {
@@ -34,7 +45,7 @@ function withoutTransactionWrapper(sql: string) {
 
 export async function bootstrapDatabase() {
   const url=setupDatabaseUrl();
-  const pool=new Pool({connectionString:url,max:1,connectionTimeoutMillis:12000});
+  const pool=new Pool({...pgOptions(url),max:1,connectionTimeoutMillis:12000});
   const client=await pool.connect();
   try {
     await client.query('BEGIN');
@@ -55,7 +66,7 @@ export async function bootstrapDatabase() {
 /** Non-destructive upgrade for an existing v2 PostgreSQL database, authorized by /setup. */
 export async function upgradeDatabase() {
   const url=setupDatabaseUrl();
-  const pool=new Pool({connectionString:url,max:1,connectionTimeoutMillis:12000});
+  const pool=new Pool({...pgOptions(url),max:1,connectionTimeoutMillis:12000});
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
