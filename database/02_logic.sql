@@ -63,6 +63,22 @@ BEGIN
 END $$;
 CREATE TRIGGER ck_staff_supervisor BEFORE INSERT OR UPDATE OF operator_id,supervisor_id ON operator_staff FOR EACH ROW EXECUTE FUNCTION fn_staff_supervisor_guard();
 
+-- SC04: reject invalid intervals before the driver-overlap and GiST range checks.
+-- Keep the declarative CHECK (arrival_at > departure_at) in 01_schema.sql.
+-- PostgreSQL runs same-kind row triggers alphabetically: a_trip_timing_guard
+-- executes before ck_trip_guard, avoiding tstzrange(inverted endpoints) -> 22000.
+CREATE OR REPLACE FUNCTION fn_check_trip_timing() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.arrival_at <= NEW.departure_at THEN
+   RAISE EXCEPTION 'Trip arrival must follow departure' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS a_trip_timing_guard ON trip;
+CREATE TRIGGER a_trip_timing_guard
+  BEFORE INSERT OR UPDATE OF departure_at,arrival_at ON trip
+  FOR EACH ROW EXECUTE FUNCTION fn_check_trip_timing();
+
 -- SC05/SC09/SC10: assignment compatibility and driver availability.
 -- Bus interval conflict is a declarative EXCLUDE constraint in 01_schema.sql.
 CREATE OR REPLACE FUNCTION fn_guard_trip() RETURNS trigger LANGUAGE plpgsql AS $$

@@ -22,7 +22,8 @@
     "verify:local": "npm run check:project && npm run build && npm run db:test && npm run smoke:web",
     "verify:deploy": "node scripts/verify-deployment.mjs",
     "test:tls-config": "node scripts/test-pg-options.mjs",
-    "test:bootstrap-order": "node scripts/test-bootstrap-order.mjs"
+    "test:bootstrap-order": "node scripts/test-bootstrap-order.mjs",
+    "test:sc04": "node scripts/test-sc04-fix.mjs"
   },
   "dependencies": {
     "next": "^16.0.0",

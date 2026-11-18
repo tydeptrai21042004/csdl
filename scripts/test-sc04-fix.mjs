@@ -1,0 +1,16 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const logic=readFileSync('database/02_logic.sql','utf8');
+const schema=readFileSync('database/01_schema.sql','utf8');
+const migration=readFileSync('database/07_fix_sc04_existing_neon.sql','utf8');
+const cases=readFileSync('src/lib/lab-cases.ts','utf8');
+assert.match(schema,/CHECK\(arrival_at>departure_at\)/);
+assert.match(schema,/CONSTRAINT ex_bus_no_overlapping_trips EXCLUDE/);
+assert.match(logic,/CREATE OR REPLACE FUNCTION fn_check_trip_timing\(\)/);
+assert.match(logic,/IF NEW\.arrival_at <= NEW\.departure_at THEN[\s\S]*?ERRCODE='23514'/);
+assert.match(logic,/CREATE TRIGGER a_trip_timing_guard[\s\S]*?BEFORE INSERT OR UPDATE OF departure_at,arrival_at ON trip/);
+assert.match(logic,/CREATE TRIGGER ck_trip_guard/);
+assert.ok(logic.indexOf('CREATE TRIGGER a_trip_timing_guard') < logic.indexOf('CREATE TRIGGER ck_trip_guard'));
+assert.ok(migration.includes("RAISE EXCEPTION 'Trip arrival must follow departure' USING ERRCODE='23514'"));
+assert.match(cases,/id:'sc04'[\s\S]*?expectError:'23514'/);
+console.log('SC04 source/migration/UI regression checks: PASS');
