@@ -5,6 +5,12 @@ import { getPool } from '@/lib/db';
 import { setupDatabaseUrl } from '@/lib/db-config';
 import { pgOptions } from '@/lib/pg-options';
 
+// Security DDL must run before seed DML: otherwise deferred constraint triggers
+// from 03_seed.sql block ALTER TABLE in 06_neon_security.sql (SQLSTATE 55006).
+const INITIALIZATION_ORDER = [
+  '01_schema.sql', '02_logic.sql', '06_neon_security.sql', '03_seed.sql'
+] as const;
+
 export const EXPECTED_TABLES = [
   'user_account','passenger_profile','platform_admin','bus_operator','operator_staff',
   'operator_phone','driver','bus','seat','station','route','route_stop',
@@ -56,9 +62,19 @@ export async function bootstrapDatabase() {
       if(exists.rows[0].found) throw new Error('Database is already initialized. Existing data was not modified. Use a fresh Neon database/branch (or an empty dedicated public schema) for a fresh seed.');
       const existing=await client.query(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' LIMIT 1`);
       if(existing.rowCount) throw new Error('The public schema contains unrelated tables. Setup only runs on an empty database.');
-      for(const file of sqlBundle.filter(f=>f.filename!=='05_upgrade_from_v2.sql')) await client.query(withoutTransactionWrapper(file.sql));
+      // Apply all security ALTER TABLE statements before inserting any seed data.
+      // Seed DML queues INITIALLY DEFERRED constraint triggers (user ISA, route stops).
+      // Running security ALTER TABLE after the seed would fail with SQLSTATE 55006.
+      for (const filename of INITIALIZATION_ORDER) {
+        const file = sqlBundle.find(entry => entry.filename === filename);
+        if (!file) throw new Error(`Required setup SQL file ${filename} is missing from the deployment bundle.`);
+        await client.query(withoutTransactionWrapper(file.sql));
+      }
+      // Validate queued deferred constraint triggers before committing, while keeping
+      // schema, permissions and all seed rows in the same atomic transaction.
+      await client.query('SET CONSTRAINTS ALL IMMEDIATE');
       await client.query('COMMIT');
-      return {ok:true,files:sqlBundle.filter(f=>f.filename!=='05_upgrade_from_v2.sql').map(x=>x.filename),message:'Created 23 tables, business logic, and populated sample records.'};
+      return {ok:true,files:[...INITIALIZATION_ORDER],message:'Created 23 tables, business logic, Neon security, and populated sample records.'};
     }catch(e){await client.query('ROLLBACK');throw e;}
   }finally{client.release();await pool.end();}
 }

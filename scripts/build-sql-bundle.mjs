@@ -1,7 +1,8 @@
 /** Bundle exact SQL sources for serverless one-time bootstrap. No DB connection required. */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-const files=['01_schema.sql','02_logic.sql','03_seed.sql','06_neon_security.sql','05_upgrade_from_v2.sql'];
+// Generated deployment bundle mirrors the safe transaction order: security DDL before seed DML.
+const files=['01_schema.sql','02_logic.sql','06_neon_security.sql','03_seed.sql','05_upgrade_from_v2.sql'];
 const data=files.map(filename=>({filename,sql:readFileSync(resolve('database',filename),'utf8')}));
 mkdirSync(resolve('src/generated'),{recursive:true});
 writeFileSync(resolve('src/generated/db-bundle.ts'),

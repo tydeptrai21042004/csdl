@@ -37,7 +37,9 @@ To initialize without a local command, sign in as application administrator, ope
 
 ## Seeded data (fresh install)
 
-`database/01_schema.sql` -> `02_logic.sql` -> `03_seed.sql` -> `06_neon_security.sql`. The seed creates 23 relational tables, 5 synthetic operators, sample stations, 18 seats/bus and 15 trips (10 future, 5 completed) as of the date seeding runs. The database is real PostgreSQL; ticket purchases are simulated only.
+`database/01_schema.sql` -> `02_logic.sql` -> `06_neon_security.sql` -> `03_seed.sql`. The seed creates 23 relational tables, 5 synthetic operators, sample stations, 18 seats/bus and 15 trips (10 future, 5 completed) as of the date seeding runs. The database is real PostgreSQL; ticket purchases are simulated only.
+
+The Neon security DDL must run **before** the seed. The deferred data-integrity triggers from the seed would otherwise block `ALTER TABLE` with SQLSTATE 55006. This ordering is enforced in both the Vercel `/setup` endpoint and the CLI script. The installer checks pending deferred constraints before the final commit.
 
 SQL Lab `/lab` has 40 guided rollback tests and a read-only `SELECT` console. To run arbitrary SQL use Neon Console SQL Editor.
 

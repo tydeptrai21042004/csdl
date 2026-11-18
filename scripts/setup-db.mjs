@@ -9,7 +9,9 @@ dotenv.config({path:'.env.local'}); dotenv.config();
 const connectionString=setupConnectionUrl();
 if(!connectionString) {console.error('Set DATABASE_URL_UNPOOLED in .env.local first.');process.exit(1);}
 const client=new pg.Client(pgOptions(connectionString));
-const files=['01_schema.sql','02_logic.sql','03_seed.sql','06_neon_security.sql'];
+// Run ALTER TABLE security statements before seed DML queues deferred constraint triggers.
+// This avoids SQLSTATE 55006 (cannot ALTER TABLE with pending trigger events).
+const files=['01_schema.sql','02_logic.sql','06_neon_security.sql','03_seed.sql'];
 try {
  await client.connect();
  const exists=await client.query("SELECT to_regclass('public.user_account') AS present");
@@ -25,6 +27,8 @@ try {
      .replace(/\s*COMMIT;\s*$/, '');
    await client.query(sql);
   }
+  // Execute deferred data-integrity checks before the final transaction COMMIT.
+  await client.query('SET CONSTRAINTS ALL IMMEDIATE');
   await client.query('COMMIT');
  } catch(err) {await client.query('ROLLBACK');throw err;}
  console.log('Database initialized atomically: 23 relations, triggers, procedures, functions, sample data.');
