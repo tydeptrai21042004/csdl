@@ -1,0 +1,43 @@
+{
+  "name": "intercity-booking-db-assignment",
+  "version": "4.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:init": "node scripts/setup-db.mjs",
+    "db:test": "node scripts/test-db.mjs",
+    "typecheck": "tsc --noEmit",
+    "db:bundle": "node scripts/build-sql-bundle.mjs",
+    "prebuild": "node scripts/build-sql-bundle.mjs",
+    "check:sql": "node scripts/static-audit.mjs",
+    "secrets": "node scripts/generate-secrets.mjs",
+    "db:upgrade": "node scripts/upgrade-db.mjs",
+    "check:web": "node scripts/web-audit.mjs",
+    "check:project": "npm run check:sql && npm run check:web",
+    "smoke:web": "node scripts/smoke-web.mjs",
+    "verify:local": "npm run check:project && npm run build && npm run db:test && npm run smoke:web",
+    "verify:deploy": "node scripts/verify-deployment.mjs"
+  },
+  "dependencies": {
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "pg": "^8.16.0",
+    "zod": "^4.1.0",
+    "lucide-react": "^0.468.0",
+    "dotenv": "^16.5.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.11",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}
