@@ -1,14 +1,17 @@
+import { setupConnectionUrl } from './db-env.mjs';
 import dotenv from 'dotenv';
 import pg from 'pg';
 dotenv.config({path:'.env.local'});dotenv.config();
-const connectionString=process.env.DATABASE_URL_UNPOOLED||process.env.DATABASE_URL;
-if(!connectionString) {console.error('DATABASE_URL is missing.');process.exit(1);}
+const connectionString=setupConnectionUrl();
+if(!connectionString) {console.error('POSTGRES_URL is missing.');process.exit(1);}
 const client=new pg.Client({connectionString});
 function ensure(ok,message){if(!ok)throw new Error(message);console.log('  PASS:',message);}
 try{
  await client.connect();
  const tableNames=['user_account','passenger_profile','operator_staff','platform_admin','bus_operator','operator_phone','driver','bus','seat','station','route','route_stop','trip','trip_seat','trip_driver_assignment','promotion','booking','ticket','payment_method','payment','refund','invoice','review'];
  for(const table of tableNames){const r=await client.query(`SELECT count(*)::int AS n FROM ${table}`);ensure(r.rows[0].n>=5,`${table}: >=5 records (${r.rows[0].n})`);}
+ const rls=await client.query(`SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND c.relname=ANY($1::text[])`,[tableNames]);
+ ensure(rls.rows[0].n===23,'RLS is enabled on all 23 application tables');
  const procedures=await client.query('CALL sp_search_trips($1::text,$2::text,$3::bigint,$4::jsonb)',[null,'SCHEDULED',null,'[]']);
  ensure(Array.isArray(procedures.rows[0].p_result),'sp_search_trips returns JSON array');
  const summary=await client.query('CALL sp_operator_summary($1::date,$2::date,$3::int,$4::jsonb)',[new Date(Date.now()-90*86400000).toISOString().slice(0,10),new Date(Date.now()+90*86400000).toISOString().slice(0,10),1,'[]']);

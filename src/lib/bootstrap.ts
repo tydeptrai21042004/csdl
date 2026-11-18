@@ -2,6 +2,7 @@ import 'server-only';
 import { Pool } from 'pg';
 import { sqlBundle } from '@/generated/db-bundle';
 import { getPool } from '@/lib/db';
+import { setupDatabaseUrl } from '@/lib/db-config';
 
 export async function databaseStatus() {
   const {rows}=await getPool().query<{initialized:boolean;table_count:number}>(
@@ -32,8 +33,7 @@ function withoutTransactionWrapper(sql: string) {
 }
 
 export async function bootstrapDatabase() {
-  const url=process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
-  if(!url) throw new Error('DATABASE_URL is not set in Vercel environment variables.');
+  const url=setupDatabaseUrl();
   const pool=new Pool({connectionString:url,max:1,connectionTimeoutMillis:12000});
   const client=await pool.connect();
   try {
@@ -42,7 +42,7 @@ export async function bootstrapDatabase() {
       await client.query('SET LOCAL statement_timeout = 25000');
       await client.query('SELECT pg_advisory_xact_lock(927160, 2026)');
       const exists=await client.query("SELECT to_regclass('public.user_account') AS found");
-      if(exists.rows[0].found) throw new Error('Database is already initialized. Existing data was not modified. Use a separate EMPTY Neon branch for a fresh seed.');
+      if(exists.rows[0].found) throw new Error('Database is already initialized. Existing data was not modified. Use a fresh Supabase project (or an empty dedicated public schema) for a fresh seed.');
       const existing=await client.query(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' LIMIT 1`);
       if(existing.rowCount) throw new Error('The public schema contains unrelated tables. Setup only runs on an empty database.');
       for(const file of sqlBundle.filter(f=>f.filename!=='05_upgrade_from_v2.sql')) await client.query(withoutTransactionWrapper(file.sql));
@@ -52,10 +52,9 @@ export async function bootstrapDatabase() {
   }finally{client.release();await pool.end();}
 }
 
-/** Non-destructive upgrade for an existing v2 Neon database, authorized by /setup. */
+/** Non-destructive upgrade for an existing v2 PostgreSQL database, authorized by /setup. */
 export async function upgradeDatabase() {
-  const url=process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
-  if(!url) throw new Error('DATABASE_URL is not configured.');
+  const url=setupDatabaseUrl();
   const pool=new Pool({connectionString:url,max:1,connectionTimeoutMillis:12000});
   const client=await pool.connect();
   try{
@@ -68,6 +67,8 @@ export async function upgradeDatabase() {
       const migration=sqlBundle.find(f=>f.filename==='05_upgrade_from_v2.sql');
       if(!migration)throw new Error('Upgrade script is missing from the deployment bundle.');
       await client.query(withoutTransactionWrapper(migration.sql));
+      const security=sqlBundle.find(f=>f.filename==='06_supabase_security.sql');
+      if(security) await client.query(withoutTransactionWrapper(security.sql));
       await client.query('COMMIT');
       return {ok:true,message:'Existing 23-table database upgraded without deleting historical records. Passenger routines and seat inventory are installed.'};
     }catch(e){await client.query('ROLLBACK');throw e;}

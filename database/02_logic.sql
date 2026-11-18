@@ -1,5 +1,5 @@
 -- PostgreSQL stored functions, business triggers, derived triggers and procedures.
--- All procedural code runs inside Neon PostgreSQL (not in Next.js).
+-- All procedural code runs inside PostgreSQL (not in Next.js).
 BEGIN;
 
 -- Assignment 1: total/disjoint UserAccount ISA, checked at transaction commit.

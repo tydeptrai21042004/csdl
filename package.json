@@ -1,6 +1,6 @@
 {
   "name": "intercity-booking-db-assignment",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,6 +8,7 @@
     "start": "next start",
     "db:init": "node scripts/setup-db.mjs",
     "db:test": "node scripts/test-db.mjs",
+    "db:check": "node scripts/check-supabase-connection.mjs",
     "typecheck": "tsc --noEmit",
     "db:bundle": "node scripts/build-sql-bundle.mjs",
     "prebuild": "node scripts/build-sql-bundle.mjs",

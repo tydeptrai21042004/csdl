@@ -3,7 +3,7 @@
 --   booking.discount_amount_applied preserves historical discounts (SC18)
 --   driver.license_class supports a simplified qualification check (SC10)
 --   trip.available_seats is a maintained derived attribute (Assignment 2 §2.2.2).
--- Run ON A NEW/EMPTY Neon database; DDL intentionally does not drop existing tables.
+-- Run ON A NEW/EMPTY Supabase database; DDL intentionally does not drop existing tables.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 

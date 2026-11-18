@@ -26,7 +26,7 @@ export default function Reports(){
    <p className="panel-description">Each function validates parameters, opens an explicit cursor, fetches records in a loop, and computes a final result.</p>
    {!isAdmin&&<div className="alert">Login as administrator to execute calculation functions.</div>}
    <form className="stacked-form" onSubmit={compute}><label>Function<select value={kind} onChange={e=>{setKind(e.target.value as 'driver'|'passenger');setId(e.target.value==='driver'?'1':'201');setResult(null);}}><option value="driver">Driver workload (hours)</option><option value="passenger">Passenger captured spend (VND)</option></select></label><label>{kind==='driver'?'Driver ID':'Passenger account ID'}<input type="number" min="1" value={id} onChange={e=>setId(e.target.value)}/></label><button className="btn full" disabled={!isAdmin||loading}>{loading?'Running...':'Execute cursor function'}</button></form>
-   {result&&<div className="calculation-result"><small>FUNCTION RESULT</small><strong>{kind==='passenger'?money(result.value):`${result.value.toFixed(2)} hours`}</strong><p>Calculated on Neon PostgreSQL from stored records.</p></div>}
+   {result&&<div className="calculation-result"><small>FUNCTION RESULT</small><strong>{kind==='passenger'?money(result.value):`${result.value.toFixed(2)} hours`}</strong><p>Calculated on Supabase PostgreSQL from stored records.</p></div>}
    </section><section className="panel"><div className="panel-header"><div><div className="eyebrow">SYSTEM CHECK</div><h2>Live database facts</h2></div><Users size={22}/></div><p className="panel-description">These values are read from the same PostgreSQL database as all Trip and Booking operations.</p>
     {[
      {name:'Scheduled + historical trips',v:stats?.trips,icon:BusFront},

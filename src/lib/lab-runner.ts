@@ -1,5 +1,6 @@
 import 'server-only';
 import {getPool} from '@/lib/db';
+import {databaseUrl} from '@/lib/db-config';
 import {Client} from 'pg';
 import {LAB_CASES,TABLES} from '@/lib/lab-cases';
 import type {LabCase} from '@/lib/lab-cases';
@@ -50,8 +51,7 @@ export async function executeReadOnlySql(raw:string){
  if(sql.length<6||sql.length>4000||!/^\s*(SELECT|WITH)\b/i.test(sql) || sql.includes(';') || /\b(SELECT\s+INTO|FOR\s+UPDATE|FOR\s+SHARE|LOCK\s+TABLE)\b/i.test(sql)){
   throw new Error('Read-only console accepts a single SELECT or WITH query (maximum 4,000 characters), without semicolons or row locks.');
  }
- if(!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured.');
- const client=new Client({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:8000});
+ const client=new Client({connectionString:databaseUrl(),connectionTimeoutMillis:8000});
  await client.connect();
  try{
   await client.query('BEGIN READ ONLY');
